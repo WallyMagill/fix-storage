@@ -97,7 +97,7 @@ Everything is clickable too: categories, the disk meter, rows, the breadcrumb an
 | Label | Meaning | Examples |
 | --- | --- | --- |
 | `junk` | Rebuilds by itself or is a leftover. Removing it loses nothing. | `node_modules`, `.next`, `__pycache__`, Pods, Xcode DerivedData, iOS DeviceSupport, `.dmg`/`.pkg` installers, caches, the Trash |
-| `unused` | Probably not needed, but your call. | build output, `.venv`, old simulators, Xcode archives, iPhone backups, archives in Downloads, screen recordings older than two weeks, anything not opened in a year |
+| `unused` | Probably not needed, but your call. | build output, `.venv`, old simulators, Xcode archives, iPhone backups, archives in Downloads, screen recordings older than two weeks, anything not opened in a year, caches that are costly to lose (downloaded AI models, test browsers) |
 | `system` | A tool manages it; removing it by hand breaks the tool, so fix-storage won't. The reason says which command to use instead. | Docker's disk image, Ollama models, Homebrew |
 | *(none)* | Yours and in use. | everything else |
 
@@ -109,7 +109,7 @@ For a folder, fix-storage runs one `du` pass over it, then follows the biggest c
 
 ### What it will and won't remove
 
-- **Caches and Trash** items are deleted for good. Apps rebuild caches when they need them.
+- **Caches and Trash** items are deleted for good. Apps rebuild caches when they need them. Clearing all caches at once skips the costly ones (Hugging Face and PyTorch models, Playwright and Puppeteer browsers, Poetry's virtual environments); remove those one by one if you mean to.
 - **Everything else** is moved to the Trash (with macOS's own `trash` command, or Finder on older systems), so you can drag it back out. The space comes back once you empty the Trash.
 - **Never removed:** System data, anything under `/System` or `/private`, your Keychains and Preferences, the data Mail, Messages, Safari, Contacts and Notes keep in `~/Library` and everything inside it, Photos libraries and everything inside them, your `~/.ssh` and `~/.gnupg` keys, anything labeled `system` (and folders holding it, like `~/.ollama`), the top-level folders the scan measures, and anything outside them.
 - `--dry-run` and `--demo` never touch the disk.

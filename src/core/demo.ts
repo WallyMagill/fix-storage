@@ -1,4 +1,5 @@
 import { CATEGORIES, type CategoryId } from "./categories";
+import { classify } from "./classify";
 import type { Clearable } from "./clean";
 import { emptySnapshot, type Item, type ScanHandle, type ScanSnapshot } from "./scan";
 
@@ -54,7 +55,8 @@ function split(total: number, paths: string[]): Item[] {
 }
 
 export function demoPlan(category: Clearable): Item[] {
-  const items = split(SIZES[category], PATHS[category]);
+  // Like the real plan, leave out what clearing skips (costly caches).
+  const items = split(SIZES[category], PATHS[category]).filter((item) => classify(item, category).verdict === "junk");
   // Many small steps so the clearing animation has something to show.
   return items.flatMap((item) =>
     Array.from({ length: 6 }, (_, i) => ({ path: i === 0 ? item.path : `${item.path}/${i}`, size: item.size / 6 })),

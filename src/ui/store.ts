@@ -20,7 +20,7 @@ import {
   trashPathFor,
   type ListHandle,
 } from "../core/browse";
-import { clean, plan, type Clearable } from "../core/clean";
+import { clean, clearableSize, plan, type Clearable } from "../core/clean";
 import { demoPlan, startDemoScan } from "../core/demo";
 import { size, tilde } from "../core/format";
 import { diskSpace, emptySnapshot, measure, startScan, type Item, type ScanHandle, type ScanSnapshot } from "../core/scan";
@@ -560,11 +560,16 @@ export class Store {
     const { scan, action } = this.state;
     if (action) return action.id;
     if (scan.phase !== "done") return null;
-    return CLEARABLE.find((id) => scan.sizes[id] >= WORTH_CLEARING) ?? null;
+    return CLEARABLE.find((id) => this.clearable(id) >= WORTH_CLEARING) ?? null;
   }
 
   canClear(id: CategoryId): id is Clearable {
-    return (CLEARABLE as CategoryId[]).includes(id) && this.state.scan.sizes[id] >= WORTH_CLEARING;
+    return (CLEARABLE as CategoryId[]).includes(id) && this.clearable(id as Clearable) >= WORTH_CLEARING;
+  }
+
+  /** What clearing the whole category would remove. */
+  clearable(id: Clearable): number {
+    return clearableSize(id, this.state.scan.sizes[id], this.state.scan.items[id]);
   }
 
   /** First press arms the button, second press within a few seconds clears. */
@@ -596,6 +601,7 @@ export class Store {
     this.set({ action: { id, current: "" }, note: null, hover: null, selected: id, stack: [], children: [], row: 0 });
 
     const items = this.options.demo ? demoPlan(id) : await plan(id, this.state.scan.items[id]);
+    const planned = new Set(items.map((item) => item.path));
 
     const onProgress = ({ path, freed }: { path: string; freed: number }) => {
       const scan = this.state.scan;
@@ -631,7 +637,8 @@ export class Store {
       scan = { ...scan, sizes, used, available: space.total > 0 ? space.available : scan.available };
     }
     const freed = Math.max(0, before - scan.sizes[id]);
-    scan = { ...scan, items: { ...scan.items, [id]: [] } };
+    // What the clear skipped stays listed, so it can still be removed one by one.
+    scan = { ...scan, items: { ...scan.items, [id]: scan.items[id].filter((item) => !planned.has(item.path)) } };
 
     const parts: string[] = [`${CATEGORY[id].name}: ${size(freed)} cleared.`];
     if (this.pretend) parts.push("Dry run: nothing was deleted.");

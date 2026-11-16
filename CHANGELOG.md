@@ -9,6 +9,9 @@ All notable changes to this project are documented here. The format follows [Kee
 - Files inside Keychains, Preferences, Mail, Messages, Safari and the other protected folders could be moved to the Trash; only the folders themselves were protected. Everything inside them is now off-limits, as are `~/.ssh`, `~/.gnupg`, and the containers where Safari, Mail, Contacts and Notes keep their data.
 - A Photos library could be moved to the Trash in two keypresses, and then deleted for good by emptying the Trash. Photos libraries and their contents are now blocked; delete photos in the Photos app instead.
 - Items labeled `system` (Docker's disk, Ollama models, Homebrew) could be removed despite the label; they are now blocked, with the command to use instead. Tool-owned paths are recognized before other rules, so `/opt/homebrew/lib/node_modules` is no longer labeled `junk`, and `~/.ollama` itself is covered.
+- Folders were labeled `unused` because their modification time was old, though that time doesn't change when files inside are edited. Folders, including `.app` bundles, now need a Spotlight last-opened date for that label.
+- Any folder named `env` was labeled a Python environment; only `.venv` and `venv` are now.
+- Clearing all caches no longer deletes costly ones (downloaded AI models, Playwright and Puppeteer browsers, Poetry's virtual environments). They are labeled `unused` and can still be removed one by one.
 
 ### Added
 

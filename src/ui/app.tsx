@@ -310,7 +310,7 @@ function QuickWins({ state, store, fs }: Ctx) {
   if (state.scan.phase !== "done") return <T fs={fs} color={FAINT}>looking for space you can get back…</T>;
   const ids = (["caches", "trash"] as Clearable[]).filter((id) => store.canClear(id) || state.action?.id === id);
   if (ids.length === 0) return <T fs={fs} color={FAINT}>nothing left that is safe to clear</T>;
-  const total = ids.reduce((sum, id) => sum + state.scan.sizes[id], 0);
+  const total = ids.reduce((sum, id) => sum + store.clearable(id), 0);
   const busy = state.action !== null || state.removing !== null;
   return (
     <Box style={{ flexDirection: "column", gap: fs * 0.35 }}>
@@ -324,11 +324,11 @@ function QuickWins({ state, store, fs }: Ctx) {
           <Box key={id} style={{ gap: fs * 0.6 }}>
             <T fs={fs} color={CATEGORY[id].color}>■</T>
             {armed ? (
-              <T fs={fs} color={RED} onClick={() => store.press(id)}>{`delete ${gb(state.scan.sizes[id])} for good? press again`}</T>
+              <T fs={fs} color={RED} onClick={() => store.press(id)}>{`delete ${gb(store.clearable(id))} for good? press again`}</T>
             ) : (
               <Box style={{ pointerShape: busy ? "default" : "pointer" }} onClick={busy ? undefined : () => store.press(id)}>
                 <T fs={fs} color={busy ? FAINT : MUTED} style={{ width: ch(fs, 13) }}>{ACTION[id].label}</T>
-                <T fs={fs} color={busy ? FAINT : MUTED}>{gb(state.scan.sizes[id]).padStart(9)}</T>
+                <T fs={fs} color={busy ? FAINT : MUTED}>{gb(store.clearable(id)).padStart(9)}</T>
               </Box>
             )}
           </Box>
@@ -407,7 +407,7 @@ function InsideHeader(ctx: Ctx) {
         </T>
         {canClear ? (
           armed ? (
-            <T fs={fs} color={RED} onClick={() => store.press(category.id as Clearable)}>{`c again to delete all ${gb(scope)}`}</T>
+            <T fs={fs} color={RED} onClick={() => store.press(category.id as Clearable)}>{`c again to delete ${gb(store.clearable(category.id as Clearable))} for good`}</T>
           ) : (
             <Hint fs={fs} k="c" label={ACTION[category.id as Clearable].label} keyColor={GREEN} onClick={() => store.press(category.id as Clearable)} />
           )

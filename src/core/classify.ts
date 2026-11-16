@@ -79,6 +79,17 @@ const BUILD_CACHES = new Set([
   ".gradle",
   ".dart_tool",
 ]);
+/**
+ * Caches that are expensive to lose: big downloads, or things a tool needs and
+ * won't fetch again by itself. Labeled `unused` so clearing all caches skips them.
+ */
+const COSTLY_CACHES = new Map<string, string>([
+  ["huggingface", "downloaded ai models · they download again when needed, which can take a while"],
+  ["torch", "downloaded ai models · they download again when needed, which can take a while"],
+  ["ms-playwright", "browsers playwright tests need · reinstall with npx playwright install"],
+  ["puppeteer", "browser puppeteer needs · reinstall with npx puppeteer browsers install"],
+  ["pypoetry", "holds poetry's virtual environments · recreate with poetry install"],
+]);
 const INSTALLERS = new Set([".dmg", ".pkg", ".mpkg", ".iso", ".xip"]);
 const ARCHIVES = new Set([".zip", ".tar", ".gz", ".tgz", ".rar", ".7z", ".bz2", ".xz"]);
 const SCREEN_CAPTURE = /^(screen recording|screenshot|cleanshot|screen shot|recording)\b/i;
@@ -99,7 +110,11 @@ export function classify(item: Item, category: CategoryId, usage?: Usage, now: n
 
   if (category === "system") return { verdict: "system", reason: "managed by macOS" };
   if (category === "trash") return { verdict: "junk", reason: "already in the trash" };
-  if (category === "caches") return { verdict: "junk", reason: "cache · apps rebuild it when they need it" };
+  if (category === "caches") {
+    const costly = COSTLY_CACHES.get(lower);
+    if (costly) return { verdict: "unused", reason: costly };
+    return { verdict: "junk", reason: "cache · apps rebuild it when they need it" };
+  }
 
   // Things a tool owns; deleting by hand breaks the tool. Checked first, so a
   // node_modules or build folder inside one is still the tool's business.
@@ -128,7 +143,7 @@ export function classify(item: Item, category: CategoryId, usage?: Usage, now: n
   // Probably not needed, but yours to decide.
   if ((lower === "target" || lower === "dist" || lower === "build" || lower === "out") && item.dir && path.includes("/"))
     return { verdict: "unused", reason: `build output · rebuilds from source${untouched}` };
-  if ((lower === ".venv" || lower === "venv" || lower === "env") && item.dir)
+  if ((lower === ".venv" || lower === "venv") && item.dir)
     return { verdict: "unused", reason: `python environment · recreate with pip install${untouched}` };
   if (path.includes("/CoreSimulator/Devices/")) return { verdict: "unused", reason: `simulator device${untouched}` };
   if (path.includes("/Xcode/Archives/")) return { verdict: "unused", reason: `old app archive${untouched}` };
@@ -140,8 +155,12 @@ export function classify(item: Item, category: CategoryId, usage?: Usage, now: n
   // Nothing about the name says junk; fall back to how long it has sat there.
   if (since !== null && usage) {
     const verb = usage.kind === "opened" ? "not opened" : "not touched";
-    if (since > 365 * DAY) return { verdict: "unused", reason: `${verb} in ${age(since)}` };
-    if (since > 180 * DAY && (ext === ".app" || category === "movies" || path.includes("/Downloads/")))
+    // A folder's modification time only changes when entries are added or
+    // removed, not when the files inside are edited, so for folders only a
+    // Spotlight last-opened date counts as evidence of disuse.
+    const evidence = usage.kind === "opened" || !item.dir;
+    if (evidence && since > 365 * DAY) return { verdict: "unused", reason: `${verb} in ${age(since)}` };
+    if (evidence && since > 180 * DAY && (ext === ".app" || category === "movies" || path.includes("/Downloads/")))
       return { verdict: "unused", reason: `${verb} in ${age(since)}` };
     return { verdict: "yours", reason: `${usage.kind} ${ago(since)}` };
   }

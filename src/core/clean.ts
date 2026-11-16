@@ -2,6 +2,7 @@ import { promises as fsp } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { roots, type CategoryId } from "./categories";
+import { classify } from "./classify";
 import type { Item } from "./scan";
 
 export type Clearable = Extract<CategoryId, "caches" | "trash">;
@@ -30,8 +31,10 @@ export interface CleanResult {
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
 /**
- * Everything directly inside the category's folders: the things that would be
- * removed. Sizes come from the scan where it measured them.
+ * Everything directly inside the category's folders that is safe to clear in
+ * one go: the things that would be removed. Costly caches (downloaded models,
+ * test browsers) are left for the user to remove one by one. Sizes come from
+ * the scan where it measured them.
  */
 export async function plan(category: Clearable, known: Item[], home: string = homedir()): Promise<Item[]> {
   const sizes = new Map(known.map((item) => [item.path, item.size]));
@@ -49,6 +52,7 @@ export async function plan(category: Clearable, known: Item[], home: string = ho
     for (const name of names) {
       const path = join(root.path, name);
       if (rootPaths.has(path)) continue;
+      if (classify({ path, size: 0 }, category).verdict !== "junk") continue;
       let bytes = sizes.get(path);
       if (bytes === undefined) {
         try {
@@ -61,6 +65,15 @@ export async function plan(category: Clearable, known: Item[], home: string = ho
     }
   }
   return items.sort((a, b) => b.size - a.size);
+}
+
+/**
+ * What clearing the whole category would remove: its measured size, less the
+ * items the clear skips (costly caches, labeled unused rather than junk).
+ */
+export function clearableSize(category: Clearable, size: number, items: Item[]): number {
+  const kept = items.filter((item) => classify(item, category).verdict !== "junk").reduce((sum, item) => sum + item.size, 0);
+  return Math.max(0, size - kept);
 }
 
 /** True only for a path strictly inside one of the category's own folders. */
